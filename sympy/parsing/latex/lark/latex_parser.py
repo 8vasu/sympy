@@ -38,19 +38,33 @@ class LarkLaTeXParser:
         The name of the Transformer class to use. If set to ``None``, it uses the
         default transformer class, which is :py:func:`TransformToSymPyExpr`.
 
+    macros : dict, optional
+
+        Keys "imaginary_unit", "trace", and "adjugate" should map to the
+        desired LaTeX macro for the imaginary unit, matrix trace, and matrix
+        adjugate respectively.
+
     """
-    def __init__(self, print_debug_output=False, transform=True, grammar_file=None, transformer=None):
+    def __init__(self, print_debug_output=False, transform=True, grammar_file=None, transformer=None, macros=None):
         grammar_dir_path = os.path.join(os.path.dirname(__file__), "grammar/")
 
         if grammar_file is None:
             with open(os.path.join(grammar_dir_path, "latex.lark"), encoding="utf-8") as f:
-                latex_grammar = f.read()
+                self.latex_grammar = f.read()
         else:
             with open(grammar_file, encoding="utf-8") as f:
-                latex_grammar = f.read()
+                self.latex_grammar = f.read()
+
+        if macros:
+            if "imaginary_unit" in macros:
+                self.setmacro("CMD_IMAGINARY_UNIT", macros["imaginary_unit"])
+            if "trace" in macros:
+                self.setmacro("FUNC_MATRIX_TRACE", macros["trace"])
+            if "adjugate" in macros:
+                self.setmacro("FUNC_MATRIX_ADJUGATE", macros["adjugate"])
 
         self.parser = _lark.Lark(
-            latex_grammar,
+            self.latex_grammar,
             source_path=grammar_dir_path,
             parser="earley",
             start="latex_string",
@@ -68,6 +82,11 @@ class LarkLaTeXParser:
             self.transformer = TransformToSymPyExpr()
         else:
             self.transformer = transformer()
+
+    def setmacro(self, terminal_name, terminal_value):
+        self.latex_grammar = re.sub(r'(^|\n)(' + re.escape(terminal_name) + ': ).*',
+                                    r'\1\2"' + re.escape(terminal_value) + '"',
+                                    self.latex_grammar)
 
     def doparse(self, s: str):
         if self.print_debug_output:
@@ -99,8 +118,10 @@ class LarkLaTeXParser:
 if _lark is not None:
     _lark_latex_parser = LarkLaTeXParser()
 
+_personal_macros = None
 
-def parse_latex_lark(s: str):
+
+def parse_latex_lark(s: str, macros=None):
     """
     Experimental LaTeX parser using Lark.
 
@@ -109,6 +130,13 @@ def parse_latex_lark(s: str):
     """
     if _lark is None:
         raise ImportError("Lark is probably not installed")
+
+    global _personal_macros
+    global _lark_latex_parser
+    if macros and (_personal_macros != macros):
+        _personal_macros = macros
+        _lark_latex_parser = LarkLaTeXParser(macros=macros)
+
     return _lark_latex_parser.doparse(s)
 
 

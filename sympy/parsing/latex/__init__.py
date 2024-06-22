@@ -6,7 +6,6 @@ from sympy.parsing.latex.lark import LarkLaTeXParser, TransformToSymPyExpr, pars
 
 from .errors import LaTeXParsingError  # noqa
 
-
 IGNORE_L = r"\s*[{]*\s*"
 IGNORE_R = r"\s*[}]*\s*"
 NO_LEFT = r"(?<!\\left)"
@@ -73,7 +72,7 @@ END_DELIM_REPR = {fr"{END_AMS_MAT}{IGNORE_R}\\right\)": "\\end{matrix}\\right)",
 
 
 def check_matrix_delimiters(latex_str):
-    """Perform matrix delimiter sanity check."""
+    """Report mismatched, excess, or missing matrix delimiters."""
     spans = []
     for begin_delim in MATRIX_DELIMS:
         end_delim = MATRIX_DELIMS[begin_delim]
@@ -144,7 +143,7 @@ def check_matrix_delimiters(latex_str):
 
 
 @doctest_depends_on(modules=('antlr4', 'lark'))
-def parse_latex(s, strict=False, backend="antlr"):
+def parse_latex(s, strict=False, backend="antlr", macros=None):
     r"""Converts the input LaTeX string ``s`` to a SymPy ``Expr``.
 
     Parameters
@@ -171,6 +170,12 @@ def parse_latex(s, strict=False, backend="antlr"):
         If True, raise an exception if the string cannot be parsed as
         valid LaTeX. If False, try to recover gracefully from common
         mistakes.
+    macros : dict, optional
+        This option is only available with the Lark backend.
+
+        Keys "imaginary_unit", "trace", and "adjugate" should map to the
+        desired LaTeX macro for the imaginary unit, matrix trace, and matrix
+        adjugate respectively.
 
     Examples
     ========
@@ -196,7 +201,7 @@ def parse_latex(s, strict=False, backend="antlr"):
         if _latex is not None:
             return _latex.parse_latex(s, strict)
     elif backend == "lark":
-        return parse_latex_lark(s)
+        return parse_latex_lark(s, macros=macros)
     else:
         raise NotImplementedError(f"Using the '{backend}' backend in the LaTeX" \
                                    " parser is not supported.")
