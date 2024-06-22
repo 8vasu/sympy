@@ -253,24 +253,22 @@ class RecurrenceOperator:
     def __pow__(self, n):
         if n == 1:
             return self
+        result = RecurrenceOperator([self.parent.base.one], self.parent)
         if n == 0:
-            return RecurrenceOperator([self.parent.base.one], self.parent)
+            return result
         # if self is `Sn`
         if self.listofpoly == self.parent.shift_operator.listofpoly:
-            sol = []
-            for i in range(0, n):
-                sol.append(self.parent.base.zero)
-            sol.append(self.parent.base.one)
-
+            sol = [self.parent.base.zero] * n + [self.parent.base.one]
             return RecurrenceOperator(sol, self.parent)
-
-        else:
-            if n % 2 == 1:
-                powreduce = self**(n - 1)
-                return powreduce * self
-            elif n % 2 == 0:
-                powreduce = self**(n / 2)
-                return powreduce * powreduce
+        x = self
+        while True:
+            if n % 2:
+                result *= x
+            n >>= 1
+            if not n:
+                break
+            x *= x
+        return result
 
     def __str__(self):
         listofpoly = self.listofpoly
@@ -352,16 +350,8 @@ class HolonomicSequence:
     __str__ = __repr__
 
     def __eq__(self, other):
-        if self.recurrence == other.recurrence:
-            if self.n == other.n:
-                if self._have_init_cond and other._have_init_cond:
-                    if self.u0 == other.u0:
-                        return True
-                    else:
-                        return False
-                else:
-                    return True
-            else:
-                return False
-        else:
+        if self.recurrence != other.recurrence or self.n != other.n:
             return False
+        if self._have_init_cond and other._have_init_cond:
+            return self.u0 == other.u0
+        return True
